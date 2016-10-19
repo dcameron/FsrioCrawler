@@ -56,8 +56,11 @@ abstract class DataParserBase implements DataParserInterface {
    */
   public function next() {
     $this->currentID = $this->currentItem = NULL;
-    if (!$this->sourceIsOpen()) {
-      $this->openSourceURL();
+    if (!$this->isSourceOpen()) {
+      if (!$this->openSourceURL()) {
+        // There is no data to parse.
+        return;
+      }
     }
     $this->parseNextRow();
   }
@@ -80,7 +83,7 @@ abstract class DataParserBase implements DataParserInterface {
    * @return bool
    *   TRUE of the source URL has been opened.
    */
-  abstract protected function sourceIsOpen();
+  abstract protected function isSourceOpen();
 
   /**
    * Opens a data file for parsing.
