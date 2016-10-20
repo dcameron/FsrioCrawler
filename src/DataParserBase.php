@@ -62,19 +62,20 @@ abstract class DataParserBase implements DataParserInterface {
         return;
       }
     }
-    $this->parseNextRow();
+    $this->nextRow();
   }
 
   /**
-   * Parses the next row in the data file.
+   * Populates currentItem the next row in the data file.
    */
-  abstract protected function parseNextRow();
+  abstract protected function nextRow();
 
   /**
    * {@inheritdoc}
    */
   public function rewind() {
     $this->openSourceURL();
+    $this->next();
   }
 
   /**
