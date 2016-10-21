@@ -56,11 +56,9 @@ abstract class DataParserBase implements DataParserInterface {
    */
   public function next() {
     $this->currentID = $this->currentItem = NULL;
-    if (!$this->isSourceOpen()) {
-      if (!$this->openSourceURL()) {
-        // There is no data to parse.
-        return;
-      }
+    if (!$this->isSourceOpen() && !$this->openSourceURL()) {
+      // There is no data to parse.
+      return;
     }
     $this->nextRow();
   }
