@@ -7,4 +7,12 @@ namespace FsrioCrawler;
  */
 interface ProjectInterface {
 
+  /**
+   * Adds a new Institution to the project's institutions array.
+   *
+   * @param \FsrioCrawler\InstitutionInterface $institution
+   *   The new Institution.
+   */
+  public function addInstitution(InstitutionInterface $institution);
+
 }

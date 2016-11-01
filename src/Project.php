@@ -24,9 +24,9 @@ class Project implements ProjectInterface {
   /**
    * The project's institutions.
    *
-   * @var string 
+   * @var \FsrioCrawler\InstitutionInterface[]
    */
-  protected $institution;
+  protected $institutions;
 
   /**
    * The project's investigators.
@@ -78,11 +78,21 @@ class Project implements ProjectInterface {
   protected $title;
 
   public function __set($name, $value) {
+    if ($name == 'institutions') {
+      return;
+    }
     $this->$name = $value;
   }
 
   public function __toString() {
     return $this->title;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function addInstitution(InstitutionInterface $institution) {
+    $this->institutions[] = $institution;
   }
 
 }

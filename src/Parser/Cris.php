@@ -3,12 +3,21 @@
 namespace FsrioCrawler\Parser;
 
 use FsrioCrawler\DataParserBase;
+use FsrioCrawler\Institution;
+use FsrioCrawler\InstitutionMatcherInterface;
 use FsrioCrawler\Project;
 
 /**
  * Provides a parser for CRIS search results.
  */
 class Cris extends DataParserBase {
+
+  /**
+   * An Institution Matcher.
+   *
+   * @var \FsrioCrawler\InstitutionMatcherInterface
+   */
+  protected $matcher;
 
   /**
    * The DOMDocument we are encapsulating.
@@ -31,13 +40,15 @@ class Cris extends DataParserBase {
    */
   protected $dataColumns = [];
 
-  public function __construct($url) {
+  public function __construct($url, InstitutionMatcherInterface $matcher) {
     parent::__construct($url);
 
     $this->document = new \DOMDocument();
 
     // Suppress errors during parsing, so we can pick them up after.
     libxml_use_internal_errors(TRUE);
+
+    $this->matcher = $matcher;
   }
 
   /**
@@ -76,7 +87,12 @@ class Cris extends DataParserBase {
       // If the column contains project data, set the appropriate project
       // property.
       if ($this->dataColumns[$key]) {
-        $project->__set($this->dataColumns[$key], $this->innerHTML($cell));
+        if ($this->dataColumns[$key] == 'institution') {
+          $project->addInstitution($this->buildInstitution($this->innerHTML($cell)));
+        }
+        else {
+          $project->__set($this->dataColumns[$key], $this->innerHTML($cell));
+        }
       }
     }
     $this->currentItem = $project;
@@ -146,6 +162,20 @@ class Cris extends DataParserBase {
           $this->dataColumns[$key] = FALSE;
       }
     }
+  }
+
+  /**
+   * Builds an Institution, matching it to an existing one if found.
+   *
+   * @param string $name
+   *   The name of the institution.
+   *
+   * @return \FsrioCrawler\Institution
+   *   The Institution.
+   */
+  protected function buildInstitution($name) {
+    $id = $this->matcher->match($name);
+    return new Institution($name, $id);
   }
 
   /**
