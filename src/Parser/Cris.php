@@ -87,8 +87,19 @@ class Cris extends DataParserBase {
       // If the column contains project data, set the appropriate project
       // property.
       if ($this->dataColumns[$key]) {
+        // Institutions are added to an array in Project objects and must be
+        // handled separately from other properties.
         if ($this->dataColumns[$key] == 'institution') {
-          $project->addInstitution($this->parseInstitutionAddress($this->innerHTML($cell)));
+          $institution = $this->parseInstitutionAddress($this->innerHTML($cell));
+          if ($institution) {
+            $project->addInstitution($institution);
+          }
+          // No matching Institution was found.  Append the address to the
+          // project's comments for manual entry.
+          else {
+            $address = str_replace('<br>', "\n", $this->innerHTML($cell));
+            $project->addComment("Institution address:\n" . $address);
+          }
         }
         else {
           $project->__set($this->dataColumns[$key], $this->innerHTML($cell));
@@ -171,8 +182,8 @@ class Cris extends DataParserBase {
    *   The address of the institution.  The address may contain up to four lines
    *   of text separated by <br> tags.
    *
-   * @return \FsrioCrawler\Institution
-   *   The Institution.
+   * @return \FsrioCrawler\Institution|NULL
+   *   The Institution or NULL if no match was found.
    */
   protected function parseInstitutionAddress($address) {
     // We can't know which line of the address contains the institution name.
@@ -203,7 +214,7 @@ class Cris extends DataParserBase {
         return new Institution($part, $id);
       }
     }
-    return new Institution($address, 0);
+    return NULL;
   }
 
   /**
