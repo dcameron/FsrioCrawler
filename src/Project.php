@@ -15,6 +15,13 @@ class Project implements ProjectInterface {
   protected $accession_number;
 
   /**
+   * Administrative information about the project.
+   *
+   * @var string
+   */
+  protected $comments;
+
+  /**
    * The project's end date.
    *
    * @var string 
@@ -86,6 +93,18 @@ class Project implements ProjectInterface {
 
   public function __toString() {
     return $this->title;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function addComment($comment) {
+    if (empty($this->comments)) {
+      $this->comments = $comment;
+    }
+    else {
+      $this->comments .= "\n\n" . $comment;
+    }
   }
 
   /**
