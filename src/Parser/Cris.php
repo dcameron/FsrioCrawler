@@ -88,7 +88,7 @@ class Cris extends DataParserBase {
       // property.
       if ($this->dataColumns[$key]) {
         if ($this->dataColumns[$key] == 'institution') {
-          $project->addInstitution($this->buildInstitution($this->innerHTML($cell)));
+          $project->addInstitution($this->parseInstitutionAddress($this->innerHTML($cell)));
         }
         else {
           $project->__set($this->dataColumns[$key], $this->innerHTML($cell));
@@ -165,17 +165,45 @@ class Cris extends DataParserBase {
   }
 
   /**
-   * Builds an Institution, matching it to an existing one if found.
+   * Parses an Institution address, matching it to an existing one if found.
    *
-   * @param string $name
-   *   The name of the institution.
+   * @param string $address
+   *   The address of the institution.  The address may contain up to four lines
+   *   of text separated by <br> tags.
    *
    * @return \FsrioCrawler\Institution
    *   The Institution.
    */
-  protected function buildInstitution($name) {
-    $id = $this->matcher->match($name);
-    return new Institution($name, $id);
+  protected function parseInstitutionAddress($address) {
+    // We can't know which line of the address contains the institution name.
+    // Split the address into separate lines and try to match each one.
+    $address_parts = explode('<br>', $address);
+
+    // Attempt to get a city name from the address, usually in the last line.
+    $last_index = count($address_parts) - 1;
+    $city = '';
+    if (isset($address_parts[$last_index])) {
+      preg_match('/^([\w\s]+),/', $address_parts[$last_index], $matches);
+      if (isset($matches[1])) {
+        $city = $matches[1];
+      }
+    }
+
+    foreach ($address_parts as $part) {
+      // Make sure "University" is spelled-out.
+      if ((strpos($part, 'UNIV') !== FALSE) && (strpos($part, 'UNIVERSITY') === FALSE)) {
+        $part = str_replace('UNIV', 'UNIVERSITY', $part);
+      }
+
+      // Replace '&amp;' with '&'.
+      $part = str_replace('&amp;', '&', $part);
+
+      $id = $this->matcher->match($part, $city);
+      if ($id) {
+        return new Institution($part, $id);
+      }
+    }
+    return new Institution($address, 0);
   }
 
   /**
