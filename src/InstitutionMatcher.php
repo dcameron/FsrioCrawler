@@ -8,14 +8,7 @@ namespace FsrioCrawler;
  * Matches Institution names to those that already exist in the Research
  * Projects Database.
  */
-class InstitutionMatcher implements InstitutionMatcherInterface {
-
-  /**
-   * A connection to the Research Projects Database.
-   *
-   * @var \PDO
-   */
-  protected $database;
+class InstitutionMatcher extends MatcherBase {
 
   /**
    * An array of institution names keyed by ID.
@@ -32,7 +25,7 @@ class InstitutionMatcher implements InstitutionMatcherInterface {
   protected $instititionsHash;
 
   public function __construct(\PDO $database) {
-    $this->database = $database;
+    parent::__construct($database);
 
     $this->queryInstitutions();
     $this->createInstitutionsHash();
@@ -153,45 +146,6 @@ class InstitutionMatcher implements InstitutionMatcherInterface {
       }
     }
     return $city_institutions[$city];
-  }
-
-  /**
-   * Normalizes strings to a common format for better matching.
-   *
-   * All characters are made lowercase.  Punctuation and extra whitespace is
-   * removed.
-   *
-   * @param string $string
-   *   The string to be normalized.
-   *
-   * @return string
-   *   The normalized string.
-   */
-  protected function normalizeString($string) {
-    $string = strtolower($string);
-    // Remove commas and hyphens.
-    $string = str_replace([',', '-'], '', $string);
-    // Remove extra whitespace.
-    $string = preg_replace('/\s+/', ' ', $string);
-    return $string;
-  }
-
-  /**
-   * Calculates the Levenshtein ratio of two strings.
-   *
-   * @param string $first
-   *   The first string.
-   * @param string $second
-   *   The second string.
-   *
-   * @return float
-   *   The ratio of the Levenshtein distance between the two strings divided by
-   *   the length of the longest string.
-   */
-  protected function calculateLevenshteinRatio($first, $second) {
-    $length = strlen($first) > strlen($second) ? strlen($first) : strlen($second);
-    $distance = levenshtein($first, $second);
-    return $distance / $length;
   }
 
 }

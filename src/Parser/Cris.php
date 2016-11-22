@@ -4,7 +4,7 @@ namespace FsrioCrawler\Parser;
 
 use FsrioCrawler\DataParserBase;
 use FsrioCrawler\Institution;
-use FsrioCrawler\InstitutionMatcherInterface;
+use FsrioCrawler\MatcherInterface;
 use FsrioCrawler\Project;
 
 /**
@@ -40,7 +40,7 @@ class Cris extends DataParserBase {
    */
   protected $dataColumns = [];
 
-  public function __construct($url, InstitutionMatcherInterface $matcher) {
+  public function __construct($url, MatcherInterface $matcher) {
     parent::__construct($url);
 
     $this->document = new \DOMDocument();
