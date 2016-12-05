@@ -33,14 +33,14 @@ class Project implements ProjectInterface {
    *
    * @var \FsrioCrawler\InstitutionInterface[]
    */
-  protected $institutions;
+  protected $institutions = [];
 
   /**
    * The project's investigators.
    *
-   * @var string 
+   * @var \FsrioCrawler\InvestigatorInterface[]
    */
-  protected $investigators;
+  protected $investigators = [];
 
   /**
    * The project's additional information.
@@ -91,6 +91,10 @@ class Project implements ProjectInterface {
     $this->$name = $value;
   }
 
+  public function __get($name) {
+    return $this->$name;
+  }
+
   public function __toString() {
     return $this->title;
   }
@@ -112,6 +116,13 @@ class Project implements ProjectInterface {
    */
   public function addInstitution(InstitutionInterface $institution) {
     $this->institutions[] = $institution;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function addInvestigator(InvestigatorInterface $investigator) {
+    $this->investigators[] = $investigator;
   }
 
 }

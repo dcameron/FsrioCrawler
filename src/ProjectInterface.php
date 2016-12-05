@@ -23,4 +23,12 @@ interface ProjectInterface {
    */
   public function addInstitution(InstitutionInterface $institution);
 
+  /**
+   * Adds a new Investigator to the project's investigators array.
+   *
+   * @param \FsrioCrawler\InvestigatorInterface $investigator
+   *   The new Investigator.
+   */
+  public function addInvestigator(InvestigatorInterface $investigator);
+
 }
