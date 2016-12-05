@@ -4,6 +4,7 @@ namespace FsrioCrawler\Parser;
 
 use FsrioCrawler\DataParserBase;
 use FsrioCrawler\Institution;
+use FsrioCrawler\Investigator;
 use FsrioCrawler\MatcherInterface;
 use FsrioCrawler\Project;
 
@@ -15,9 +16,16 @@ class Cris extends DataParserBase {
   /**
    * An Institution Matcher.
    *
-   * @var \FsrioCrawler\InstitutionMatcherInterface
+   * @var \FsrioCrawler\MatcherInterface
    */
-  protected $matcher;
+  protected $institution_matcher;
+
+  /**
+   * An Investigator Matcher.
+   *
+   * @var \FsrioCrawler\MatcherInterface
+   */
+  protected $investigator_matcher;
 
   /**
    * The DOMDocument we are encapsulating.
@@ -40,7 +48,7 @@ class Cris extends DataParserBase {
    */
   protected $dataColumns = [];
 
-  public function __construct($url, MatcherInterface $matcher) {
+  public function __construct($url, MatcherInterface $institution_matcher, MatcherInterface $investigator_matcher) {
     parent::__construct($url);
 
     $this->document = new \DOMDocument();
@@ -48,7 +56,8 @@ class Cris extends DataParserBase {
     // Suppress errors during parsing, so we can pick them up after.
     libxml_use_internal_errors(TRUE);
 
-    $this->matcher = $matcher;
+    $this->institution_matcher = $institution_matcher;
+    $this->investigator_matcher = $investigator_matcher;
   }
 
   /**
@@ -83,6 +92,8 @@ class Cris extends DataParserBase {
     // Parse the cells in the row.
     $cells = $row->getElementsByTagName('td');
     $project = new Project();
+    $institution = NULL;
+    $investigators = '';
     foreach ($cells as $key => $cell) {
       // If the column contains project data, set the appropriate project
       // property.
@@ -101,10 +112,28 @@ class Cris extends DataParserBase {
             $project->addComment("Institution address:\n" . $address);
           }
         }
+        // Investigators are only matched if an Institution has also been
+        // matched, but it's possible that the Investigators field will be found
+        // before the Institution, depending on how the search display was set
+        // up.  Save the Investigators for later parsing.
+        elseif ($this->dataColumns[$key] == 'investigators') {
+          $investigators = $this->innerHTML($cell);
+        }
         else {
           $project->__set($this->dataColumns[$key], $this->innerHTML($cell));
         }
       }
+    }
+    // Parse the Investigators if an Institution was matched.
+    if ($institution && $investigators) {
+      $parsed_investigators = $this->parseInvestigators($investigators, $institution->getId());
+      foreach ($parsed_investigators as $investigator) {
+        $project->addInvestigator($investigator);
+      }
+    }
+    // Add Investigators to the project comments if no Institution was found.
+    elseif ($investigators) {
+      $project->addComment("\nInvestigators:\n" . $investigators);
     }
     $this->currentItem = $project;
   }
@@ -209,12 +238,37 @@ class Cris extends DataParserBase {
       // Replace '&amp;' with '&'.
       $part = str_replace('&amp;', '&', $part);
 
-      $id = $this->matcher->match($part, $city);
+      $id = $this->institution_matcher->match($part, $city);
       if ($id) {
         return new Institution($part, $id);
       }
     }
     return NULL;
+  }
+
+  /**
+   * Parses Investigator names, matching them to existing ones if found.
+   *
+   * @param string $names
+   *   A string containing a semicolon-separated list of names.
+   * @param int $institution_id
+   *   The ID number of the Institution at which this Investigator worked.
+   *
+   * @return Investigator[]
+   *   An array of parsed Investigators.
+   */
+  protected function parseInvestigators($names, $institution_id) {
+    $investigators = [];
+    foreach (explode(';', $names) as $name) {
+      // Trim ", ." off the end of any names, which seems to indicate the
+      // absence of a middle initial.
+      if (substr($name, -3) == ', .') {
+        $name = substr($name, 0, -3);
+      }
+      $id = $this->investigator_matcher->match($name, $institution_id);
+      $investigators[] = new Investigator($name, $id);
+    }
+    return $investigators;
   }
 
   /**
