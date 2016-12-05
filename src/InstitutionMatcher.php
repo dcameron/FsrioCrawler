@@ -76,8 +76,7 @@ class InstitutionMatcher extends MatcherBase {
 
       // Attempt to find a close match among institutions located in the given
       // city.
-      $id = $this->matchInList($name, $this->queryCityInstitutions($city));
-      if ($id) {
+      if ($id = $this->matchInList($name, $this->queryCityInstitutions($city))) {
         return $id;
       }
     }
@@ -85,35 +84,7 @@ class InstitutionMatcher extends MatcherBase {
     // Atempt to find a cloe match within the array of all Institutions.
     //$id = $this->matchInList($name, $this->institutions);
 
-    return $id;
-  }
-
-  /**
-   * Attempts to find a closely-matching Institution within a list of names.
-   *
-   * @param string $name
-   *   The Institution name.
-   * @param string[] $list
-   *   An array of Institution names from the database keyed by ID.
-   *
-   * @return int
-   *   The matching Institution ID number or 0 if there was no match.
-   */
-  protected function matchInList($name, $list) {
-    $min_ratio = 1;
-    $min_ratio_id = 0;
-    foreach ($list as $id => $institution) {
-      $ratio = $this->calculateLevenshteinRatio($name, $institution);
-      // Ignore any Institution name that must be replaced over 25%.
-      if ($ratio > 0.25) {
-        continue;
-      }
-      elseif ($ratio < $min_ratio) {
-        $min_ratio = $ratio;
-        $min_ratio_id = $id;
-      }
-    }
-    return $min_ratio_id;
+    return 0;
   }
 
   /**
