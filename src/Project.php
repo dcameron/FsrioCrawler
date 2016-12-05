@@ -78,6 +78,13 @@ class Project implements ProjectInterface {
   protected $start_date;
 
   /**
+   * The project's source URL.
+   *
+   * @var string
+   */
+  protected $source_url;
+
+  /**
    * The project's title.
    *
    * @var string 
@@ -85,7 +92,7 @@ class Project implements ProjectInterface {
   protected $title;
 
   public function __set($name, $value) {
-    if ($name == 'institutions') {
+    if ($name == 'institutions' || $name == 'investigators') {
       return;
     }
     $this->$name = $value;
