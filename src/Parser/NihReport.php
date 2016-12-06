@@ -3,6 +3,8 @@
 namespace FsrioCrawler\Parser;
 
 use FsrioCrawler\DataParserBase;
+use FsrioCrawler\Institution;
+use FsrioCrawler\Investigator;
 use FsrioCrawler\MatcherInterface;
 use FsrioCrawler\Project;
 
@@ -79,7 +81,12 @@ class NihReport extends DataParserBase {
     if (empty($url)) {
       return;
     }
-    $this->currentItem = $this->parseProjectPage($url);
+
+    $project = new Project();
+    $project->__set('source_url', $url);
+    $this->parseProjectDescriptionPage($url, $project);
+
+    $this->currentItem = $project;
   }
 
   /**
@@ -101,44 +108,253 @@ class NihReport extends DataParserBase {
   }
 
   /**
-   * Parses a project page.
+   * Parses a project description page.
    *
    * @param string $url
-   *   The URL of the project page.
-   *
-   * @return \FsrioCrawler\Project
-   *   The parsed project.
+   *   The URL of the project description page.
+   * @param \FsrioCrawler\Project
+   *   The project into which the data will be parsed.
    */
-  protected function parseProjectPage($url) {
-    $project = new Project();
-
+  protected function parseProjectDescriptionPage($url, $project) {
     // Open the project URL.
     $document = new \DOMDocument();
     $document->loadHTMLFile($url);
     $xpath = new \DOMXPath($document);
 
-    if ($project_number = $this->findProjectNumber($xpath)) {
+    // Parse the page by searching for the project information.
+    if ($project_number = $this->findSearchCriteriaValue($xpath, 'Project Number:')) {
       $project->__set('project_number', $project_number);
     }
-
-    return $project;
+    if ($title = $this->findSearchCriteriaValue($xpath, 'Title:')) {
+      $project->__set('title', $title);
+    }
+    if ($institution_name = $this->findSearchCriteriaValue($xpath, 'Awardee Organization:')) {
+      if ($institution = $this->parseInstitution($institution_name)) {
+        $project->addInstitution($institution);
+      }
+      else {
+        $project->addComment("Institution:\n" . $institution_name);
+      }
+    }
+    if ($investigator_name = $this->findSearchCriteriaValue($xpath, 'Contact PI / Project Leader:')) {
+      if (isset($institution) && $investigator = $this->parseInvestigator($investigator_name, $institution->getId())) {
+        $project->addInvestigator($investigator);
+      }
+      elseif (isset($institution)) {
+        $project->addComment("\n\nInvestigator:\n" . $investigator_name);
+      }
+    }
+    if ($objective = $this->findObjective($xpath)) {
+      $project->__set('objective', $objective);
+    }
+    // Parse the project details page.
+    $details_url = $this->findProjectDetailsUrl($xpath);
+    $this->parseProjectDetailsPage($details_url, $project);
   }
 
-  protected function findProjectNumber(\DOMXPath $xpath) {
+  /**
+   * Parses table cells in the project description search_criteria div.
+   *
+   * @param \DOMXPath $xpath
+   *   The XPath of the project description document.
+   * @param type $label
+   *   The text inside the cell immediately preceding the cell that contains
+   *   the data we're looking for.
+   *
+   * @return string
+   *   The parsed data value.
+   */
+  protected function findSearchCriteriaValue(\DOMXPath $xpath, $label) {
     $cells = $xpath->query("//div[@class='search_criteria']//td");
     if (!$cells->length) {
       return NULL;
     }
-    $isNumber = FALSE;
+    $isValue = FALSE;
     foreach ($cells as $cell) {
-      if ($isNumber) {
+      if ($isValue) {
         return trim($cell->nodeValue);
       }
-      if (trim($cell->nodeValue) == 'Project Number:') {
-        // Set $isNumber to indicate that the next cell is the project number.
-        $isNumber = TRUE;
+      if (trim($cell->nodeValue) == $label) {
+        // Set $isValue to indicate that the next cell is the value.
+        $isValue = TRUE;
       }
     }
+  }
+
+  /**
+   * Parses table rows in the project description to find the objective.
+   *
+   * @param \DOMXPath $xpath
+   *   The XPath of the project description document.
+   *
+   * @return string
+   *   The parsed objective value.
+   */
+  protected function findObjective(\DOMXPath $xpath) {
+    $rows = $xpath->query("//table[@class='proj_info_cont']//tr");
+    if (!$rows->length) {
+      return NULL;
+    }
+    $isValue = FALSE;
+    foreach ($rows as $row) {
+      if ($isValue) {
+        return trim($row->nodeValue);
+      }
+      if (trim($row->nodeValue) == 'Abstract Text:') {
+        // Set $isValue to indicate that the next row is the value.
+        $isValue = TRUE;
+      }
+    }
+  }
+
+  /**
+   * Parses anchors in the project description to build the details page URL.
+   *
+   * @param \DOMXPath $xpath
+   *   The XPath of the project description document.
+   *
+   * @return string
+   *   The URL of the project details page.
+   */
+  protected function findProjectDetailsUrl(\DOMXPath $xpath) {
+    $anchors = $xpath->query("//a[@title='Details']");
+    if (!$anchors->length) {
+      return NULL;
+    }
+    foreach ($anchors as $anchor) {
+      $javascript = $anchor->getAttribute('href');
+      preg_match('/\((?<aid>\d+),(?<icde>\d+)\)/', $javascript, $matches);
+      if ($matches) {
+        return 'https://projectreporter.nih.gov/project_info_details.cfm?aid=' . $matches['aid'] . '&icde=' . $matches['icde'];
+      }
+    }
+  }
+
+  /**
+   * Parses a project details page.
+   *
+   * @param string $url
+   *   The URL of the project details page.
+   * @param \FsrioCrawler\Project
+   *   The project into which the data will be parsed.
+   */
+  protected function parseProjectDetailsPage($url, $project) {
+    // Open the project details URL.
+    $document = new \DOMDocument();
+    $document->loadHTMLFile($url);
+    $xpath = new \DOMXPath($document);
+
+    if ($start_date = $this->findProjectStartDate($xpath)) {
+      $project->__set('start_date', $start_date);
+    }
+    if ($end_date = $this->findProjectEndDate($xpath)) {
+      $project->__set('end_date', $end_date);
+    }
+  }
+
+  /**
+   * Parses a table cell in the project details to find the start date.
+   *
+   * @param \DOMXPath $xpath
+   *   The XPath of the project details document.
+   *
+   * @return string
+   *   The parsed start date value.
+   */
+  protected function findProjectStartDate(\DOMXPath $xpath) {
+    // Find the Other Information row.
+    $infoRow = $this->findOtherInformationRow($xpath);
+    if (!$infoRow) {
+      return NULL;
+    }
+    // The project start date is in the second table cell of the Other
+    // Information row.
+    foreach ($infoRow->childNodes->item(2)->childNodes as $node) {
+      if ($node->nodeValue == 'Project Start Date') {
+        return substr(trim($node->nextSibling->nodeValue), -4);
+      }
+    }
+  }
+
+  /**
+   * Parses a table cell in the project details to find the end date.
+   *
+   * @param \DOMXPath $xpath
+   *   The XPath of the project details document.
+   *
+   * @return string
+   *   The parsed end date value.
+   */
+  protected function findProjectEndDate(\DOMXPath $xpath) {
+    // Find the Other Information row.
+    $infoRow = $this->findOtherInformationRow($xpath);
+    if (!$infoRow) {
+      return NULL;
+    }
+    // The project end date is in the third table cell of the Other
+    // Information row.
+    foreach ($infoRow->childNodes->item(4)->childNodes as $node) {
+      if ($node->nodeValue == 'Project End Date') {
+        return substr(trim($node->nextSibling->nodeValue), -4);
+      }
+    }
+  }
+
+  /**
+   * Locates a table row in the project details containing start and end dates.
+   *
+   * @param \DOMXPath $xpath
+   *   The XPath of the project details document.
+   *
+   * @return \DOMElement|NULL
+   *   The table row that contains the data or NULL if the row wasn't found.
+   */
+  protected function findOtherInformationRow(\DOMXPath $xpath) {
+    $rows = $xpath->query("//table[@class='proj_info_cont']/tr");
+    $isInfoRow = FALSE;
+    $infoRow = NULL;
+    foreach ($rows as $row) {
+      if ($isInfoRow && !empty($row)) {
+        return $row;
+      }
+      if (trim($row->nodeValue) == 'Other Information:') {
+        $isInfoRow = TRUE;
+      }
+    }
+    return NULL;
+  }
+
+  /**
+   * Parses an Institution name, matching it to an existing one if found.
+   *
+   * @param string $name
+   *   The name of the institution.
+   *
+   * @return \FsrioCrawler\Institution|NULL
+   *   The Institution or NULL if no match was found.
+   */
+  protected function parseInstitution($name) {
+    $id = $this->institution_matcher->match($name);
+    if ($id) {
+      return new Institution($name, $id);
+    }
+    return NULL;
+  }
+
+  /**
+   * Parses an Investigator name, matching it to existing one if found.
+   *
+   * @param string $name
+   *   The name of the Investigator.
+   * @param int $institution_id
+   *   The ID number of the Institution at which this Investigator worked.
+   *
+   * @return \FsrioCrawler\Investigator
+   *   The parsed Investigator.
+   */
+  protected function parseInvestigator($name, $institution_id) {
+    $id = $this->investigator_matcher->match($name, $institution_id);
+    return new Investigator($name, $id);
   }
 
 }
