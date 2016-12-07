@@ -28,6 +28,13 @@ class NihReport extends DataParserBase {
   protected $investigator_matcher;
 
   /**
+   * A Funding Source Matcher.
+   *
+   * @var \FsrioCrawler\MatcherInterface
+   */
+  protected $funding_source_matcher;
+
+  /**
    * The DOMDocument we are encapsulating.
    *
    * @var \DOMDocument
@@ -41,7 +48,7 @@ class NihReport extends DataParserBase {
    */
   protected $projectUrls = [];
 
-  public function __construct($url, MatcherInterface $institution_matcher, MatcherInterface $investigator_matcher) {
+  public function __construct($url, MatcherInterface $institution_matcher, MatcherInterface $investigator_matcher, MatcherInterface $funding_source_matcher) {
     parent::__construct($url);
 
     $this->document = new \DOMDocument();
@@ -51,6 +58,7 @@ class NihReport extends DataParserBase {
 
     $this->institution_matcher = $institution_matcher;
     $this->investigator_matcher = $investigator_matcher;
+    $this->funding_source_matcher = $funding_source_matcher;
   }
 
   /**
@@ -250,6 +258,14 @@ class NihReport extends DataParserBase {
     if ($end_date = $this->findProjectEndDate($xpath)) {
       $project->__set('end_date', $end_date);
     }
+    if ($funding_source_name = $this->findProjectFundingSource($xpath)) {
+      if ($funding_source = $this->parseFundingSource($funding_source_name)) {
+        $project->__set('funding_source', $funding_source);
+      }
+      else {
+        $project->addComment("Funding Source:\n" . $funding_source_name);
+      }
+    }
   }
 
   /**
@@ -312,12 +328,34 @@ class NihReport extends DataParserBase {
   protected function findOtherInformationRow(\DOMXPath $xpath) {
     $rows = $xpath->query("//table[@class='proj_info_cont']/tr");
     $isInfoRow = FALSE;
-    $infoRow = NULL;
     foreach ($rows as $row) {
       if ($isInfoRow && !empty($row)) {
         return $row;
       }
       if (trim($row->nodeValue) == 'Other Information:') {
+        $isInfoRow = TRUE;
+      }
+    }
+    return NULL;
+  }
+
+  /**
+   * Parses a table row in the project details to find the Funding Source name.
+   *
+   * @param \DOMXPath $xpath
+   *   The XPath of the project details document.
+   *
+   * @return int
+   *   The ID number of the matching Funding Source or 0 if no match was found.
+   */
+  protected function findProjectFundingSource(\DOMXPath $xpath) {
+    $rows = $xpath->query("//table[@class='proj_info_cont']/tr");
+    $isInfoRow = FALSE;
+    foreach ($rows as $row) {
+      if ($isInfoRow && !empty($row)) {
+        return trim($row->nodeValue);
+      }
+      if (trim($row->nodeValue) == 'Administering Institutes or Centers:') {
         $isInfoRow = TRUE;
       }
     }
@@ -355,6 +393,19 @@ class NihReport extends DataParserBase {
   protected function parseInvestigator($name, $institution_id) {
     $id = $this->investigator_matcher->match($name, $institution_id);
     return new Investigator($name, $id);
+  }
+
+  /**
+   * Parses a Funding Source name, matching it to existing one if found.
+   *
+   * @param string $name
+   *   The name of the Funding Source.
+   *
+   * @return int
+   *   The ID number of the parsed Funding Source.
+   */
+  protected function parseFundingSource($name) {
+    return $this->funding_source_matcher->match($name);
   }
 
 }
