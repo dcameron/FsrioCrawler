@@ -29,6 +29,13 @@ class Project implements ProjectInterface {
   protected $end_date;
 
   /**
+   * The ID number of the project's funding source.
+   *
+   * @var int
+   */
+  protected $funding_source;
+
+  /**
    * The project's institutions.
    *
    * @var \FsrioCrawler\InstitutionInterface[]
