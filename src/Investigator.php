@@ -15,14 +15,34 @@ class Investigator implements InvestigatorInterface {
   protected $id = 0;
 
   /**
+   * The Investigator's Instutition.
+   *
+   * @var \FsrioCrawler\Institution
+   */
+  protected $institution;
+
+  /**
    * The Investigator name.
    *
    * @var string
    */
   protected $name;
 
-  public function __construct($name, $id = 0) {
+  /**
+   * Builds an Investigator object.
+   *
+   * @param string $name
+   *   The name of the Investigator.
+   * @param \FsrioCrawler\InstitutionInterface $institution
+   *   The Institution with which this Investigator is associated.
+   * @param type $id
+   *   The ID number of the Investigator in the database.
+   *
+   * @todo This should throw an exception if the $institution is NULL.
+   */
+  public function __construct($name, InstitutionInterface $institution, $id = 0) {
     $this->name = $name;
+    $this->institution = $institution;
     if ($id) {
       $this->id = $id;
     }
@@ -38,8 +58,22 @@ class Investigator implements InvestigatorInterface {
   /**
    * {@inheritdoc}
    */
+  public function getInstitution() {
+    return $this->institution;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
   public function getName() {
     return $this->name;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function setId($id) {
+    $this->id = $id;
   }
 
 }

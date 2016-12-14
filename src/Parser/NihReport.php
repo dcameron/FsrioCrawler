@@ -4,6 +4,7 @@ namespace FsrioCrawler\Parser;
 
 use FsrioCrawler\DataParserBase;
 use FsrioCrawler\Institution;
+use FsrioCrawler\InstitutionInterface;
 use FsrioCrawler\Investigator;
 use FsrioCrawler\MatcherInterface;
 use FsrioCrawler\Project;
@@ -260,7 +261,7 @@ class NihReport extends DataParserBase {
     if ($investigator_name = $this->findProjectInvestigator($xpath)) {
       // Fix the capitalization.
       $investigator_name = $this->fixCapitalization($investigator_name);
-      if (isset($institution) && $investigator = $this->parseInvestigator($investigator_name, $institution->getId())) {
+      if (isset($institution) && $investigator = $this->parseInvestigator($investigator_name, $institution)) {
         $project->addInvestigator($investigator);
       }
       else {
@@ -458,15 +459,15 @@ class NihReport extends DataParserBase {
    *
    * @param string $name
    *   The name of the Investigator.
-   * @param int $institution_id
-   *   The ID number of the Institution at which this Investigator worked.
+   * @param \FsrioCrawler\InstitutionInterface $institution
+   *   The Institution at which this Investigator worked.
    *
    * @return \FsrioCrawler\Investigator
    *   The parsed Investigator.
    */
-  protected function parseInvestigator($name, $institution_id) {
-    $id = $this->investigator_matcher->match($name, $institution_id);
-    return new Investigator($name, $id);
+  protected function parseInvestigator($name, InstitutionInterface $institution) {
+    $id = $this->investigator_matcher->match($name, $institution->getId());
+    return new Investigator($name, $institution, $id);
   }
 
   /**

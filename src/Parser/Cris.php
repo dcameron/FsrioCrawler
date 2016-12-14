@@ -4,6 +4,7 @@ namespace FsrioCrawler\Parser;
 
 use FsrioCrawler\DataParserBase;
 use FsrioCrawler\Institution;
+use FsrioCrawler\InstitutionInterface;
 use FsrioCrawler\Investigator;
 use FsrioCrawler\MatcherInterface;
 use FsrioCrawler\Project;
@@ -126,7 +127,7 @@ class Cris extends DataParserBase {
     }
     // Parse the Investigators if an Institution was matched.
     if ($institution && $investigators) {
-      $parsed_investigators = $this->parseInvestigators($investigators, $institution->getId());
+      $parsed_investigators = $this->parseInvestigators($investigators, $institution);
       foreach ($parsed_investigators as $investigator) {
         $project->addInvestigator($investigator);
       }
@@ -251,13 +252,13 @@ class Cris extends DataParserBase {
    *
    * @param string $names
    *   A string containing a semicolon-separated list of names.
-   * @param int $institution_id
-   *   The ID number of the Institution at which this Investigator worked.
+   * @param \FsrioCrawler\InstitutionInterface $institution
+   *   The Institution at which this Investigator worked.
    *
    * @return Investigator[]
    *   An array of parsed Investigators.
    */
-  protected function parseInvestigators($names, $institution_id) {
+  protected function parseInvestigators($names, InstitutionInterface $institution) {
     $investigators = [];
     foreach (explode(';', $names) as $name) {
       // Trim ", ." off the end of any names, which seems to indicate the
@@ -265,8 +266,8 @@ class Cris extends DataParserBase {
       if (substr($name, -3) == ', .') {
         $name = substr($name, 0, -3);
       }
-      $id = $this->investigator_matcher->match($name, $institution_id);
-      $investigators[] = new Investigator($name, $id);
+      $id = $this->investigator_matcher->match($name, $institution->getId());
+      $investigators[] = new Investigator($name, $institution, $id);
     }
     return $investigators;
   }
