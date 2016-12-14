@@ -81,8 +81,8 @@ class InstitutionMatcher extends MatcherBase {
       }
     }
 
-    // Atempt to find a cloe match within the array of all Institutions.
-    //$id = $this->matchInList($name, $this->institutions);
+    // Atempt to find a close match within the array of all Institutions.
+    $id = $this->matchInList($name, $this->institutions, 0.1);
 
     return 0;
   }

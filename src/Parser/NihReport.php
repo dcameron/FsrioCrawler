@@ -134,23 +134,7 @@ class NihReport extends DataParserBase {
       $project->__set('project_number', $project_number);
     }
     if ($title = $this->findSearchCriteriaValue($xpath, 'Title:')) {
-      $project->__set('title', $title);
-    }
-    if ($institution_name = $this->findSearchCriteriaValue($xpath, 'Awardee Organization:')) {
-      if ($institution = $this->parseInstitution($institution_name)) {
-        $project->addInstitution($institution);
-      }
-      else {
-        $project->addComment("Institution:\n" . $institution_name);
-      }
-    }
-    if ($investigator_name = $this->findSearchCriteriaValue($xpath, 'Contact PI / Project Leader:')) {
-      if (isset($institution) && $investigator = $this->parseInvestigator($investigator_name, $institution->getId())) {
-        $project->addInvestigator($investigator);
-      }
-      elseif (isset($institution)) {
-        $project->addComment("\n\nInvestigator:\n" . $investigator_name);
-      }
+      $project->__set('title', $this->fixCapitalization($title));
     }
     if ($objective = $this->findObjective($xpath)) {
       $project->__set('objective', $objective);
@@ -158,6 +142,23 @@ class NihReport extends DataParserBase {
     // Parse the project details page.
     $details_url = $this->findProjectDetailsUrl($xpath);
     $this->parseProjectDetailsPage($details_url, $project);
+  }
+
+  /**
+   * Parses spans in the project description to find the project number.
+   *
+   * @param \DOMXPath $xpath
+   *   The XPath of the project description document.
+   *
+   * @return string
+   *   The parsed project number.
+   */
+  protected function findProjectNumber(\DOMXPath $xpath) {
+    $spans = $xpath->query("//span[@id='spnPNUMB']//td");
+    if (!$spans->length) {
+      return NULL;
+    }
+    return $spans->item(0)->nodeValue;
   }
 
   /**
@@ -206,6 +207,10 @@ class NihReport extends DataParserBase {
     $isValue = FALSE;
     foreach ($rows as $row) {
       if ($isValue) {
+        // Removed unwanted text from the start of the objective.
+        if (substr(trim($row->nodeValue), 0, 37) == 'DESCRIPTION (provided by applicant): ') {
+          return substr(trim($row->nodeValue), 37);
+        }
         return trim($row->nodeValue);
       }
       if (trim($row->nodeValue) == 'Abstract Text:') {
@@ -252,6 +257,24 @@ class NihReport extends DataParserBase {
     $document->loadHTMLFile($url);
     $xpath = new \DOMXPath($document);
 
+    if ($institution_data = $this->findProjectInstitution($xpath)) {
+      if ($institution = $this->parseInstitution($institution_data['name'], $institution_data['city'])) {
+        $project->addInstitution($institution);
+      }
+      else {
+        $project->addComment("Institution:\n" . $this->fixCapitalization($institution_data['name']));
+      }
+    }
+    if ($investigator_name = $this->findProjectInvestigator($xpath)) {
+      // Fix the capitalization.
+      $investigator_name = $this->fixCapitalization($investigator_name);
+      if (isset($institution) && $investigator = $this->parseInvestigator($investigator_name, $institution->getId())) {
+        $project->addInvestigator($investigator);
+      }
+      else {
+        $project->addComment("Investigator:\n" . $investigator_name);
+      }
+    }
     if ($start_date = $this->findProjectStartDate($xpath)) {
       $project->__set('start_date', $start_date);
     }
@@ -259,11 +282,61 @@ class NihReport extends DataParserBase {
       $project->__set('end_date', $end_date);
     }
     if ($funding_source_name = $this->findProjectFundingSource($xpath)) {
+      $funding_source_name = $this->fixCapitalization($funding_source_name);
       if ($funding_source = $this->parseFundingSource($funding_source_name)) {
         $project->__set('funding_source', $funding_source);
       }
       else {
         $project->addComment("Funding Source:\n" . $funding_source_name);
+      }
+    }
+  }
+
+  /**
+   * Parses a table cell in the project details to find the institution data.
+   *
+   * @param \DOMXPath $xpath
+   *   The XPath of the project details document.
+   *
+   * @return array
+   *   A string array containing the keys 'name' and 'city'.
+   */
+  protected function findProjectInstitution(\DOMXPath $xpath) {
+    // Find the Other Information row.
+    $infoRow = $this->findProjectInfoRow($xpath, 'Organization:');
+    if (!$infoRow) {
+      return NULL;
+    }
+    $institution = [];
+    // The project start date is in the second table cell of the Other
+    // Information row.
+    foreach ($infoRow->childNodes->item(0)->childNodes as $node) {
+      if ($node->nodeValue == 'Name: ') {
+        $institution['name'] = trim($node->nextSibling->nodeValue);
+      }
+      if ($node->nodeValue == 'City: ') {
+        // Remove &nbsp;'s from the end of the city name.
+        $institution['city'] = trim(substr($node->nextSibling->nodeValue, 0, -6));
+      }
+    }
+    return $institution;
+  }
+
+  /**
+   * Parses anchors in the project details to find the investigator name.
+   *
+   * @param \DOMXPath $xpath
+   *   The XPath of the project details document.
+   *
+   * @return string
+   *   The parsed investigator name.
+   */
+  protected function findProjectInvestigator(\DOMXPath $xpath) {
+    // Find PI info anchors.
+    $anchors = $xpath->query("//a[@title='Click to view Contact PI/Project Leader Profile']");
+    foreach ($anchors as $anchor) {
+      if (!empty($anchor->nodeValue)) {
+        return $anchor->nodeValue;
       }
     }
   }
@@ -279,7 +352,7 @@ class NihReport extends DataParserBase {
    */
   protected function findProjectStartDate(\DOMXPath $xpath) {
     // Find the Other Information row.
-    $infoRow = $this->findOtherInformationRow($xpath);
+    $infoRow = $this->findProjectInfoRow($xpath, 'Other Information:');
     if (!$infoRow) {
       return NULL;
     }
@@ -303,7 +376,7 @@ class NihReport extends DataParserBase {
    */
   protected function findProjectEndDate(\DOMXPath $xpath) {
     // Find the Other Information row.
-    $infoRow = $this->findOtherInformationRow($xpath);
+    $infoRow = $this->findProjectInfoRow($xpath, 'Other Information:');
     if (!$infoRow) {
       return NULL;
     }
@@ -321,18 +394,21 @@ class NihReport extends DataParserBase {
    *
    * @param \DOMXPath $xpath
    *   The XPath of the project details document.
+   * @param string $header_string
+   *   A unique string from the beginning of the header row that precedes the
+   *   data row.
    *
    * @return \DOMElement|NULL
    *   The table row that contains the data or NULL if the row wasn't found.
    */
-  protected function findOtherInformationRow(\DOMXPath $xpath) {
+  protected function findProjectInfoRow(\DOMXPath $xpath, $header_string) {
     $rows = $xpath->query("//table[@class='proj_info_cont']/tr");
     $isInfoRow = FALSE;
     foreach ($rows as $row) {
       if ($isInfoRow && !empty($row)) {
         return $row;
       }
-      if (trim($row->nodeValue) == 'Other Information:') {
+      if (trim(substr($row->nodeValue, 0, strlen($header_string))) == $header_string) {
         $isInfoRow = TRUE;
       }
     }
@@ -367,12 +443,18 @@ class NihReport extends DataParserBase {
    *
    * @param string $name
    *   The name of the institution.
+   * @param string $city
+   *   The name of the institution's city.
    *
    * @return \FsrioCrawler\Institution|NULL
    *   The Institution or NULL if no match was found.
    */
-  protected function parseInstitution($name) {
-    $id = $this->institution_matcher->match($name);
+  protected function parseInstitution($name, $city) {
+    // Make sure "University" is spelled-out.
+    if ((strpos($name, 'UNIV') !== FALSE) && (strpos($name, 'UNIVERSITY') === FALSE)) {
+      $name = str_replace('UNIV', 'UNIVERSITY', $name);
+    }
+    $id = $this->institution_matcher->match($name, $city);
     if ($id) {
       return new Institution($name, $id);
     }
@@ -406,6 +488,21 @@ class NihReport extends DataParserBase {
    */
   protected function parseFundingSource($name) {
     return $this->funding_source_matcher->match($name);
+  }
+
+  /**
+   * Fixes the capitalization of all-uppercase strings.
+   *
+   * Many of the strings in the NIH RePORT are completely uppercase.  This
+   * changes the words to lowercase and capitalizes only the first letter of
+   * each word, with a few exceptions.
+   *
+   * @param type $string
+   * @return type
+   */
+  protected function fixCapitalization($string) {
+    $string = ucwords(strtolower($string));
+    return str_replace([' Of ', ' And ', ' In ', ' To '], [' of ', ' and ', ' in ', ' to '], $string);
   }
 
 }
