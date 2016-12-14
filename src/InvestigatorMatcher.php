@@ -119,4 +119,29 @@ class InvestigatorMatcher extends MatcherBase {
     return 0;
   }
 
+  /**
+   * Updates the list of Investigators for a specific Institution.
+   *
+   * This is intended to be used by crawlers to inform the Matcher that an
+   * Institution has had new Investigators added during runtime.  That way the
+   * Matcher can update its lists and avoid having a situation where a new
+   * Investigator that has multiple new projects has a new Investigator record
+   * inserted over and over again.
+   *
+   * @param \FsrioCrawler\InstitutionInterface $institution
+   *   The Institution whose lists need to be refreshed.
+   */
+  public function updateInvestigators(InstitutionInterface $institution) {
+    // Get a new list of Investigators from the Institution.
+    $query = $this->database->prepare('SELECT ID, name FROM investigator_data WHERE INSTITUTION = ? ORDER BY name');
+    $query->execute([$institution->getId()]);
+    $investigators = [];
+    while ($investigator = $query->fetch(\PDO::FETCH_ASSOC)) {
+      $investigators[$investigator['ID']] = $investigator['name'];
+    }
+    // Replace the existing list arrays for the Instutution.
+    $this->investigators[$institution->getId()] = $investigators;
+    $this->investigatorsHash[$institution->getId()] = array_flip($investigators);
+  }
+
 }
