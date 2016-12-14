@@ -131,6 +131,14 @@ class NihReport extends DataParserBase {
 
     // Parse the page by searching for the project information.
     if ($project_number = $this->findSearchCriteriaValue($xpath, 'Project Number:')) {
+      // Remove any former project numbers.  Don't worry about strpos()
+      // returning 0.  If for some reason "Former Number" is at the start of the
+      // string, then we wouldn't want it anyway.
+      if ($position = strpos($project_number, 'Former Number:')) {
+        $project_number = substr($project_number, 0, $position);
+        // Trim excess whitespace that may include &nbsp; characters.
+        $project_number = trim($project_number, " \t\n\r\0\x0B\xC2\xA0");
+      }
       $project->__set('project_number', $project_number);
     }
     if ($title = $this->findSearchCriteriaValue($xpath, 'Title:')) {
@@ -142,23 +150,6 @@ class NihReport extends DataParserBase {
     // Parse the project details page.
     $details_url = $this->findProjectDetailsUrl($xpath);
     $this->parseProjectDetailsPage($details_url, $project);
-  }
-
-  /**
-   * Parses spans in the project description to find the project number.
-   *
-   * @param \DOMXPath $xpath
-   *   The XPath of the project description document.
-   *
-   * @return string
-   *   The parsed project number.
-   */
-  protected function findProjectNumber(\DOMXPath $xpath) {
-    $spans = $xpath->query("//span[@id='spnPNUMB']//td");
-    if (!$spans->length) {
-      return NULL;
-    }
-    return $spans->item(0)->nodeValue;
   }
 
   /**
@@ -315,8 +306,8 @@ class NihReport extends DataParserBase {
         $institution['name'] = trim($node->nextSibling->nodeValue);
       }
       if ($node->nodeValue == 'City: ') {
-        // Remove &nbsp;'s from the end of the city name.
-        $institution['city'] = trim(substr($node->nextSibling->nodeValue, 0, -6));
+        // Trim excess whitespace that may include &nbsp; characters.
+        $institution['city'] = trim($node->nextSibling->nodeValue, " \t\n\r\0\x0B\xC2\xA0");
       }
     }
     return $institution;
