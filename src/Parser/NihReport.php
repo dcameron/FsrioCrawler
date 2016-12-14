@@ -82,7 +82,7 @@ class NihReport extends DataParserBase {
    * {@inheritdoc}
    */
   public function nextRow() {
-    if (empty($this->proejctUrls) && !$this->parseSearchResults()) {
+    if (!isset($this->proejctUrls) && !$this->parseSearchResults()) {
       // There is no data to parse.
       return;
     }
