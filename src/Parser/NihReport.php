@@ -198,9 +198,10 @@ class NihReport extends DataParserBase {
     $isValue = FALSE;
     foreach ($rows as $row) {
       if ($isValue) {
-        // Removed unwanted text from the start of the objective.
-        if (substr(trim($row->nodeValue), 0, 37) == 'DESCRIPTION (provided by applicant): ') {
-          return substr(trim($row->nodeValue), 37);
+        // Removed unwanted text from the start of the objective, including
+        // encoded whitespace characters.
+        if (strpos($row->nodeValue, 'DESCRIPTION (provided by applicant): ')) {
+          return substr(trim($row->nodeValue, " \t\n\r\0\x0B\xC2\xA0\xEF\xBB\xBF"), 37);
         }
         return trim($row->nodeValue);
       }
