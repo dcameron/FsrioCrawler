@@ -47,7 +47,7 @@ class NihReport extends DataParserBase {
    *
    * @var string[]
    */
-  protected $projectUrls = [];
+  protected $projectUrls = NULL;
 
   public function __construct($url, MatcherInterface $institution_matcher, MatcherInterface $investigator_matcher, MatcherInterface $funding_source_matcher) {
     parent::__construct($url);
@@ -82,7 +82,7 @@ class NihReport extends DataParserBase {
    * {@inheritdoc}
    */
   public function nextRow() {
-    if (!isset($this->proejctUrls) && !$this->parseSearchResults()) {
+    if (!isset($this->projectUrls) && !$this->parseSearchResults()) {
       // There is no data to parse.
       return;
     }
