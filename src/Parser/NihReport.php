@@ -3,10 +3,12 @@
 namespace FsrioCrawler\Parser;
 
 use FsrioCrawler\DataParserBase;
+use FsrioCrawler\FundingSourceMatcherInterface;
 use FsrioCrawler\Institution;
 use FsrioCrawler\InstitutionInterface;
+use FsrioCrawler\InstitutionMatcherInterface;
 use FsrioCrawler\Investigator;
-use FsrioCrawler\MatcherInterface;
+use FsrioCrawler\InvestigatorMatcherInterface;
 use FsrioCrawler\Project;
 
 /**
@@ -17,21 +19,21 @@ class NihReport extends DataParserBase {
   /**
    * An Institution Matcher.
    *
-   * @var \FsrioCrawler\MatcherInterface
+   * @var \FsrioCrawler\InstitutionMatcherInterface
    */
   protected $institution_matcher;
 
   /**
    * An Investigator Matcher.
    *
-   * @var \FsrioCrawler\MatcherInterface
+   * @var \FsrioCrawler\InvestigatorMatcherInterface
    */
   protected $investigator_matcher;
 
   /**
    * A Funding Source Matcher.
    *
-   * @var \FsrioCrawler\MatcherInterface
+   * @var \FsrioCrawler\FundingSourceMatcherInterface
    */
   protected $funding_source_matcher;
 
@@ -49,7 +51,7 @@ class NihReport extends DataParserBase {
    */
   protected $projectUrls = NULL;
 
-  public function __construct($url, MatcherInterface $institution_matcher, MatcherInterface $investigator_matcher, MatcherInterface $funding_source_matcher) {
+  public function __construct($url, InstitutionMatcherInterface $institution_matcher, InvestigatorMatcherInterface $investigator_matcher, FundingSourceMatcherInterface $funding_source_matcher) {
     parent::__construct($url);
 
     $this->document = new \DOMDocument();

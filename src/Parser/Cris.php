@@ -5,8 +5,9 @@ namespace FsrioCrawler\Parser;
 use FsrioCrawler\DataParserBase;
 use FsrioCrawler\Institution;
 use FsrioCrawler\InstitutionInterface;
+use FsrioCrawler\InstitutionMatcherInterface;
 use FsrioCrawler\Investigator;
-use FsrioCrawler\MatcherInterface;
+use FsrioCrawler\InvestigatorMatcherInterface;
 use FsrioCrawler\Project;
 
 /**
@@ -17,14 +18,14 @@ class Cris extends DataParserBase {
   /**
    * An Institution Matcher.
    *
-   * @var \FsrioCrawler\MatcherInterface
+   * @var \FsrioCrawler\InstitutionMatcherInterface
    */
   protected $institution_matcher;
 
   /**
    * An Investigator Matcher.
    *
-   * @var \FsrioCrawler\MatcherInterface
+   * @var \FsrioCrawler\InvestigatorMatcherInterface
    */
   protected $investigator_matcher;
 
@@ -49,7 +50,7 @@ class Cris extends DataParserBase {
    */
   protected $dataColumns = [];
 
-  public function __construct($url, MatcherInterface $institution_matcher, MatcherInterface $investigator_matcher) {
+  public function __construct($url, InstitutionMatcherInterface $institution_matcher, InvestigatorMatcherInterface $investigator_matcher) {
     parent::__construct($url);
 
     $this->document = new \DOMDocument();

@@ -8,7 +8,16 @@ namespace FsrioCrawler;
  * Matches Investigator names to those that already exist in the Research
  * Projects Database.
  */
-class InvestigatorMatcher extends MatcherBase {
+class InvestigatorMatcher implements InvestigatorMatcherInterface {
+
+  use MatcherTrait;
+
+  /**
+   * A connection to the Research Projects Database.
+   *
+   * @var \PDO
+   */
+  protected $database;
 
   /**
    * A nested array of investigator names.
@@ -31,7 +40,7 @@ class InvestigatorMatcher extends MatcherBase {
   protected $investigatorsHash;
 
   public function __construct(\PDO $database) {
-    parent::__construct($database);
+    $this->database = $database;
 
     $this->queryInvestigators();
     $this->createInvestigatorsHash();
@@ -120,16 +129,7 @@ class InvestigatorMatcher extends MatcherBase {
   }
 
   /**
-   * Updates the list of Investigators for a specific Institution.
-   *
-   * This is intended to be used by crawlers to inform the Matcher that an
-   * Institution has had new Investigators added during runtime.  That way the
-   * Matcher can update its lists and avoid having a situation where a new
-   * Investigator that has multiple new projects has a new Investigator record
-   * inserted over and over again.
-   *
-   * @param \FsrioCrawler\InstitutionInterface $institution
-   *   The Institution whose lists need to be refreshed.
+   * {@inheritdoc}
    */
   public function updateInvestigators(InstitutionInterface $institution) {
     // Get a new list of Investigators from the Institution.

@@ -1,21 +1,11 @@
 <?php
 
 namespace FsrioCrawler;
+
 /**
  * Contains basic functions for matching data to existing database records.
  */
-abstract class MatcherBase implements MatcherInterface {
-
-  /**
-   * A connection to the Research Projects Database.
-   *
-   * @var \PDO
-   */
-  protected $database;
-
-  public function __construct(\PDO $database) {
-    $this->database = $database;
-  }
+trait MatcherTrait {
 
   /**
    * Attempts to find a closely-matching name within a list of names.

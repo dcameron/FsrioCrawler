@@ -8,7 +8,16 @@ namespace FsrioCrawler;
  * Matches Funding Source names to those that already exist in the Research
  * Projects Database.
  */
-class FundingSourceMatcher extends MatcherBase {
+class FundingSourceMatcher implements FundingSourceMatcherInterface {
+
+  use MatcherTrait;
+
+  /**
+   * A connection to the Research Projects Database.
+   *
+   * @var \PDO
+   */
+  protected $database;
 
   /**
    * An array of Funding Source names keyed by ID.
@@ -25,7 +34,7 @@ class FundingSourceMatcher extends MatcherBase {
   protected $fundingSourcesHash;
 
   public function __construct(\PDO $database) {
-    parent::__construct($database);
+    $this->database = $database;
 
     $this->queryFundingSources();
     $this->createFundingSourcesHash();

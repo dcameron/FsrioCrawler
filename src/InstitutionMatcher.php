@@ -8,7 +8,16 @@ namespace FsrioCrawler;
  * Matches Institution names to those that already exist in the Research
  * Projects Database.
  */
-class InstitutionMatcher extends MatcherBase {
+class InstitutionMatcher implements InstitutionMatcherInterface {
+
+  use MatcherTrait;
+
+  /**
+   * A connection to the Research Projects Database.
+   *
+   * @var \PDO
+   */
+  protected $database;
 
   /**
    * An array of institution names keyed by ID.
@@ -25,7 +34,7 @@ class InstitutionMatcher extends MatcherBase {
   protected $instititionsHash;
 
   public function __construct(\PDO $database) {
-    parent::__construct($database);
+    $this->database = $database;
 
     $this->queryInstitutions();
     $this->createInstitutionsHash();
